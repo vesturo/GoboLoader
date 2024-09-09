@@ -4,8 +4,8 @@ const fs = require('fs');
 const canvasWidth = 2048;
 const canvasHeight = 1024;
 const goboImages = [
-  'Gobo1.png', 'Gobo2.png', 'Gobo3.png', 'Gobo4.png',
-  'Gobo5.png', 'Gobo6.png', 'Gobo7.png', 'Gobo8.png'
+  'GoboSlot1.png', 'GoboSlot2.png', 'GoboSlot3.png', 'GoboSlot4.png',
+  'GoboSlot5.png', 'GoboSlot6.png', 'GoboSlot7.png', 'GoboSlot8.png'
 ];
 
 async function generateAtlas() {
