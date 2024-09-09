@@ -1,5 +1,5 @@
+const sharp = require('sharp');
 const fs = require('fs');
-const { createCanvas, loadImage } = require('canvas');
 
 const canvasWidth = 2048;
 const canvasHeight = 1024;
@@ -9,16 +9,26 @@ const goboImages = [
 ];
 
 async function generateAtlas() {
-  const canvas = createCanvas(canvasWidth, canvasHeight);
-  const ctx = canvas.getContext('2d');
+  const imageSize = 256;  // Assuming each image is 256x256
+  const images = await Promise.all(goboImages.map(imagePath =>
+    sharp(imagePath).resize(imageSize, imageSize).toBuffer()
+  ));
 
+  // Create a new Sharp instance with the desired dimensions
+  const atlas = sharp({
+    create: {
+      width: canvasWidth,
+      height: canvasHeight,
+      channels: 4,
+      background: { r: 0, g: 0, b: 0, alpha: 0 }
+    }
+  });
+
+  // Composite the images onto the canvas
   let x = 0;
   let y = 0;
-  const imageSize = 256;  // Assuming each image is 256x256
-
-  for (const imagePath of goboImages) {
-    const image = await loadImage(imagePath);
-    ctx.drawImage(image, x, y, imageSize, imageSize);
+  for (const image of images) {
+    atlas.composite([{ input: image, top: y, left: x }]);
     x += imageSize;
     if (x >= canvasWidth) {
       x = 0;
@@ -31,14 +41,9 @@ async function generateAtlas() {
     fs.mkdirSync('generated');
   }
 
-  // Write the atlas to a file
-  const out = fs.createWriteStream('generated/SpotlightGoboAtlas.png');
-  const stream = canvas.createPNGStream();
-  stream.pipe(out);
-
-  out.on('finish', () => {
-    console.log('The Gobo Atlas was created.');
-  });
+  // Save the atlas
+  await atlas.toFile('generated/SpotlightGoboAtlas.png');
+  console.log('The Gobo Atlas was created.');
 }
 
 generateAtlas().catch(console.error);
