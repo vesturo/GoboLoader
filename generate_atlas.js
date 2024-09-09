@@ -1,49 +1,67 @@
 const sharp = require('sharp');
 const fs = require('fs');
 
-const canvasWidth = 2048;
-const canvasHeight = 1024;
-const goboImages = [
-  'GoboSlot1.png', 'GoboSlot2.png', 'GoboSlot3.png', 'GoboSlot4.png',
-  'GoboSlot5.png', 'GoboSlot6.png', 'GoboSlot7.png', 'GoboSlot8.png'
+const images = [
+    'Gobo1.png', 'Gobo2.png', 'Gobo3.png', 'Gobo4.png',
+    'Gobo5.png', 'Gobo6.png', 'Gobo7.png', 'Gobo8.png'
 ];
 
-async function generateAtlas() {
-  const imageSize = 256;  // Assuming each image is 256x256
-  const images = await Promise.all(goboImages.map(imagePath =>
-    sharp(imagePath).resize(imageSize, imageSize).toBuffer()
-  ));
-
-  // Create a new Sharp instance with the desired dimensions
-  const atlas = sharp({
-    create: {
-      width: canvasWidth,
-      height: canvasHeight,
-      channels: 4,
-      background: { r: 0, g: 0, b: 0, alpha: 0 }
+// Check if all images exist
+images.forEach(image => {
+    if (!fs.existsSync(image)) {
+        console.error(`Error: ${image} is missing.`);
+        process.exit(1); // Exit if any image is missing
     }
-  });
+});
 
-  // Composite the images onto the canvas
-  let x = 0;
-  let y = 0;
-  for (const image of images) {
-    atlas.composite([{ input: image, top: y, left: x }]);
-    x += imageSize;
-    if (x >= canvasWidth) {
-      x = 0;
-      y += imageSize;
+const generateAtlas = async () => {
+    try {
+        // Create a blank canvas of 2048x1024
+        const canvas = sharp({
+            create: {
+                width: 2048,
+                height: 1024,
+                channels: 4,
+                background: { r: 0, g: 0, b: 0, alpha: 1 } // Black background
+            }
+        });
+
+        // Define positions for each image in a 2x4 grid
+        const positions = [
+            { left: 0, top: 0 },
+            { left: 512, top: 0 },
+            { left: 1024, top: 0 },
+            { left: 1536, top: 0 },
+            { left: 0, top: 512 },
+            { left: 512, top: 512 },
+            { left: 1024, top: 512 },
+            { left: 1536, top: 512 }
+        ];
+
+        // Composite each image onto the canvas
+        const composites = await Promise.all(
+            images.map((image, index) =>
+                sharp(image)
+                    .resize(512, 512) // Ensure each image is resized to 512x512
+                    .toBuffer()
+                    .then(buffer => ({
+                        input: buffer,
+                        left: positions[index].left,
+                        top: positions[index].top
+                    }))
+            )
+        );
+
+        // Composite all images onto the canvas
+        await canvas.composite(composites)
+            .png()
+            .toFile('generated/SpotlightGoboAtlas.png');
+
+        console.log('Atlas generated successfully: generated/SpotlightGoboAtlas.png');
+    } catch (error) {
+        console.error('Error generating atlas:', error);
     }
-  }
+};
 
-  // Ensure the generated directory exists
-  if (!fs.existsSync('generated')) {
-    fs.mkdirSync('generated');
-  }
-
-  // Save the atlas
-  await atlas.toFile('generated/SpotlightGoboAtlas.png');
-  console.log('The Gobo Atlas was created.');
-}
-
-generateAtlas().catch(console.error);
+// Run the atlas generation
+generateAtlas();
